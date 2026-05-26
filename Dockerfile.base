@@ -31,6 +31,9 @@ RUN set -eux; \
     sed -i -E 's/"openclaw"[[:space:]]*:[[:space:]]*"workspace:[^"]+"/"openclaw": "*"/g' "$f"; \
   done
 
+# The metadata patch intentionally makes node_modules look stale to pnpm 11.
+# Dependencies were already installed from the frozen upstream lockfile.
+ENV pnpm_config_verify_deps_before_run=false
 RUN pnpm build
 ENV OPENCLAW_PREFER_PNPM=1
 RUN pnpm ui:build
