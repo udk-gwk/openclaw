@@ -150,7 +150,11 @@ NGINX_CONF="/etc/nginx/conf.d/openclaw.conf"
 AUTH_BLOCK=""
 if [ -n "$AUTH_PASSWORD" ]; then
   echo "[entrypoint] setting up nginx basic auth (user: $AUTH_USERNAME)"
-  htpasswd -bc /etc/nginx/.htpasswd "$AUTH_USERNAME" "$AUTH_PASSWORD" 2>/dev/null
+  mkdir -p /etc/nginx
+  if ! htpasswd -bc /etc/nginx/.htpasswd "$AUTH_USERNAME" "$AUTH_PASSWORD" 2>/dev/null; then
+    echo "[entrypoint] ERROR: htpasswd failed — cannot create /etc/nginx/.htpasswd"
+    exit 1
+  fi
   AUTH_BLOCK='auth_basic "Openclaw";
         auth_basic_user_file /etc/nginx/.htpasswd;'
 else
@@ -295,6 +299,12 @@ server {
 NGINXEOF
 
 # ── Start nginx ──────────────────────────────────────────────────────────────
+# Remove stale PID file — a leftover from a prior run can prevent nginx from starting
+rm -f /run/nginx.pid 2>/dev/null || true
+
+echo "[entrypoint] testing nginx config..."
+nginx -t 2>&1 || { echo "[entrypoint] ERROR: nginx config test failed — see output above"; exit 1; }
+
 echo "[entrypoint] starting nginx on port ${PORT:-8080}..."
 nginx
 
