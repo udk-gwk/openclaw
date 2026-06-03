@@ -255,6 +255,11 @@ server {
     location / {
         ${AUTH_BLOCK}
 
+        # Prevent upstream WWW-Authenticate headers from reaching the browser —
+        # openclaw returns Bearer challenges which would trigger a re-prompt loop
+        # when nginx basic auth is active.
+        proxy_hide_header WWW-Authenticate;
+
         proxy_pass http://127.0.0.1:${GATEWAY_PORT}\$uri?\$ocw_proxy_args;
         proxy_set_header Authorization "Bearer ${GATEWAY_TOKEN}";
 
@@ -281,6 +286,7 @@ server {
     # Browser sidecar proxy (VNC web UI)
     location /browser/ {
         ${AUTH_BLOCK}
+        proxy_hide_header WWW-Authenticate;
 
         proxy_pass http://browser:3000/;
         proxy_set_header Host \$host;
