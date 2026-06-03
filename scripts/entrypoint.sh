@@ -148,6 +148,7 @@ AUTH_USERNAME="${AUTH_USERNAME:-admin}"
 NGINX_CONF="/etc/nginx/conf.d/openclaw.conf"
 
 AUTH_BLOCK=""
+AUTH_MAP=""
 if [ -n "$AUTH_PASSWORD" ]; then
   echo "[entrypoint] setting up nginx basic auth (user: $AUTH_USERNAME)"
   mkdir -p /etc/nginx
@@ -155,7 +156,13 @@ if [ -n "$AUTH_PASSWORD" ]; then
     echo "[entrypoint] ERROR: htpasswd failed — cannot create /etc/nginx/.htpasswd"
     exit 1
   fi
-  AUTH_BLOCK='auth_basic "Openclaw";
+  # Map: if ?token=<gateway_token> is present, set realm to "off" (skip basic auth)
+  # nginx treats auth_basic "off" as disabled — lets token-based access bypass the prompt
+  AUTH_MAP="map \$arg_token \$openclaw_auth_realm {
+    ${GATEWAY_TOKEN}  \"off\";
+    default           \"Openclaw\";
+}"
+  AUTH_BLOCK='auth_basic $openclaw_auth_realm;
         auth_basic_user_file /etc/nginx/.htpasswd;'
 else
   echo "[entrypoint] no AUTH_PASSWORD set, nginx will not require authentication"
@@ -216,6 +223,8 @@ cat > /usr/share/nginx/html/starting.html <<'STARTPAGE'
 STARTPAGE
 
 cat > "$NGINX_CONF" <<NGINXEOF
+map_hash_bucket_size 128;
+
 map \$http_upgrade \$connection_upgrade {
     default upgrade;
     ''      close;
@@ -231,6 +240,8 @@ map "\$ocw_has_token:\$args" \$ocw_proxy_args {
     ~^0:.+  "\$args&token=${GATEWAY_TOKEN}";
     default "token=${GATEWAY_TOKEN}";
 }
+
+${AUTH_MAP}
 
 server {
     listen ${PORT:-8080} default_server;
