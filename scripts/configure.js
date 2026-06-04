@@ -102,7 +102,8 @@ if (token) {
   config.gateway.auth.token = token;
 }
 
-// Allow control UI without device pairing (only set defaults, don't overwrite)
+// Enable Control UI and disable device pairing (don't overwrite existing values).
+// In Docker the gateway token + optional basic auth in nginx already secure the UI.
 ensure(config, "gateway", "controlUi");
 if (config.gateway.controlUi.allowInsecureAuth === undefined) {
   config.gateway.controlUi.allowInsecureAuth = true;
@@ -110,11 +111,15 @@ if (config.gateway.controlUi.allowInsecureAuth === undefined) {
 if (config.gateway.controlUi.enabled === undefined) {
   config.gateway.controlUi.enabled = true;
 }
+if (config.gateway.controlUi.dangerouslyDisableDeviceAuth === undefined) {
+  config.gateway.controlUi.dangerouslyDisableDeviceAuth = true;
+}
 
 // Bind address (all gateway config comes from openclaw.json; "gateway run" reads it)
 if (config.gateway.bind === undefined) {
   config.gateway.bind = process.env.OPENCLAW_GATEWAY_BIND || "loopback";
 }
+
 
 // ── Agents defaults ─────────────────────────────────────────────────────────
 
